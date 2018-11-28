@@ -30,9 +30,7 @@
                         </div>
                         <div class="uk-margin">
                             <div v-if="result" class="uk-text-left">
-                                <strong>Rezultāts:</strong>
-                                <span v-if="answer == '[iet]'">Ir jāiet :(</span>
-                                <span v-else>Nav jāiet :)</span>
+                                <strong>Rezultāts: {{ answer }}</strong>
                             </div>
                         </div>
                     </form>
@@ -53,6 +51,28 @@
                     </form>
                 </div>
             </div>
+            <div class="uk-width-1-3">
+                <div class="uk-card uk-card-default uk-card-body">
+                    <form class="uk-form-stacked uk-padding">
+                        <div>
+                            <legend class="uk-legend">Apmācīt</legend>
+                            <p class="uk-text-left">Izvēleties kritērijus un izvēlaties sagaidāmo rezultātu.</p>
+                        </div>
+                        <div class="uk-margin">
+                            <div v-for="(question, key) in questions" :key="key" class="uk-margin uk-grid-small uk-child-width-auto uk-grid">
+                                <label>
+                                    <input v-model="question.value" class="uk-checkbox" type="checkbox">
+                                    <span>{{ question.text }} ({{ question.coef.toFixed(2) }})</span>
+                                    <span uk-icon="info" :uk-tooltip="key"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="uk-margin-large-top">
+                            <button v-for="(answer, key) in answers" @click.prevent="learn(key)" class="uk-button uk-button-primary uk-margin-right">{{ answer.text }} {{ answer.coef }}</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
     <script src="./vendor/js/babel.min.js"></script>
@@ -65,22 +85,21 @@
             el: '#app',
             data: {
                 questions: {
-                    '[spid_saule]':   { value: false, text: 'Spīd saule?' },
-                    '[bus_kd]':       { value: false, text: 'Būs KD?' },
-                    '[bija_ballite]': { value: false, text: 'Vakar bija ballīte?' },
-                    '[list_lietus]':  { value: false, text: 'Līst lietus?' },
-                    '[nav_md]':       { value: false, text: 'Suns apēda mājas darbu?' },
+                    '[spid_saule]':   { value: false, coef: 0.01, text: 'Spīd saule?' },
+                    '[bus_kd]':       { value: false, coef: 0.01, text: 'Būs KD?' },
+                    '[bija_ballite]': { value: false, coef: 0.01, text: 'Vakar bija ballīte?' },
+                    '[list_lietus]':  { value: false, coef: 0.01, text: 'Līst lietus?' },
+                    '[nav_md]':       { value: false, coef: 0.01, text: 'Suns apēda mājas darbu?' },
                 },
+                answers: {
+                    '[iet]':   { coef: 0.01, text:'Ir jaiet :(' },
+                    '[neiet]': { coef: 0.01, text:'Nav jāiet :)' },
+                },
+                limit: 0.8,
+                step: 0.01,
                 result: false,
-                answer: '',
-                kb:
-                    'IF [spid_saule] AND [bija_ballite] THEN [neiet]\n' +
-                    'IF [spid_saule] AND NOT [bija_ballite] AND [bus_kd] THEN [iet]\n' +
-                    'IF [spid_saule] AND NOT [bija_ballite] AND NOT [bus_kd]  AND NOT [nav_md] THEN [iet]\n' +
-                    'IF [spid_saule] AND NOT [bija_ballite] AND NOT [bus_kd]  AND [nav_md] THEN [neiet]\n' +
-                    'IF NOT [spid_saule] AND [list_lietus] THEN [neiet]\n' +
-                    'IF NOT [spid_saule] AND NOT [list_lietus] AND [nav_md] THEN [neiet]\n' +
-                    'IF NOT [spid_saule] AND NOT [list_lietus] AND NOT [nav_md] THEN [iet]\n'
+                answer: '[neiet]',
+                kb: ''
             },
             methods: {
                 analyze: function() {
@@ -105,9 +124,23 @@
                 },
                 // varbūtību
                 probability: function(){
-
+                    
+                },
+                learn: function (answer) {
+                    let questionString = ''
+                    for(key in this.questions){
+                        if(this.questions[key].value){
+                            this.questions[key].coef = (this.questions[key].coef + this.step > 1) ? 1 : this.questions[key].coef + this.step
+                            questionString += (questionString.length === 0) ?  key : ' AND '+ key
+                        }
+                    }
+                    this.answers[answer].coef = (this.answers[answer].coef + this.step > 1) ? 1 : this.answers[answer].coef + this.step
+                    let statement = 'IF ' + questionString + ' THEN ' + answer + '\n';
+                    if(this.kb.indexOf(statement) === -1)
+                        this.kb += statement
                 },
                 checkStatement: function(statement){
+                    console.log(statement)
                     let answer = statement.substr(statement.indexOf('THEN') + 4).trim()
                     let conditions = statement.slice(0, statement.indexOf('THEN')).
                             replace('IF', '').
