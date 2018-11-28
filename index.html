@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>ADAS - Vai iet uz universitāti?</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="./vendor/css/uikit.min.css"/>
+</head>
+<body>
+    <div id="app">
+        <div class="uk-child-width-expand@s uk-text-center uk-padding" uk-grid>
+            <div class="uk-width-1-3">
+                <div class="uk-card uk-card-default uk-card-body">
+                    <form class="uk-form-stacked uk-padding">
+                        <div>
+                            <legend class="uk-legend">Jautājumi</legend>
+                            <p class="uk-text-left">Izvēleties kritērijus un nospiediet pogu Analizēt.</p>
+                        </div>
+                        <div class="uk-margin">
+                            <div v-for="(question, key) in questions" :key="key" class="uk-margin uk-grid-small uk-child-width-auto uk-grid">
+                                <label>
+                                    <input v-model="question.value" class="uk-checkbox" type="checkbox">
+                                    <span>{{question.text}}</span>
+                                    <span uk-icon="info" :uk-tooltip="key"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="uk-margin-large-top">
+                            <button @click.prevent="analyze" class="uk-button uk-button-primary">Analizēt</button>
+                        </div>
+                        <div class="uk-margin">
+                            <div v-if="result" class="uk-text-left">
+                                <strong>Rezultāts:</strong>
+                                <span v-if="answer == '[iet]'">Ir jāiet :(</span>
+                                <span v-else>Nav jāiet :)</span>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="uk-width-2-3">
+                <div class="uk-card uk-card-default uk-card-body">
+                    <form class="uk-form-stacked uk-padding">
+                        <div>
+                            <legend class="uk-legend">Zināšanu bāze</legend>
+                            <p class="uk-text-left">Var rediģēt. Zināšanu bāze tiek saglabāta pārlukprogrammas localstorage.</p>
+                            <p class="uk-text-left">Pieejamie nosacijumi: <strong>{{ conditionList }}</strong></p>
+                            <p class="uk-text-left">Iespējamās atbildes: <strong>[iet],[neiet]</strong></p>
+                        </div>
+                        <div class="uk-margin">
+                            <textarea v-model="kb" class="uk-textarea" rows="9" placeholder="Zināšanu bāze"></textarea>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="./vendor/js/babel.min.js"></script>
+    <script src="./vendor/js/vue.min.js"></script>
+    <script src="./vendor/js/uikit.min.js"></script>
+    <!--async="false" uikit and vuejs conflict fix-->
+    <script src="./vendor/js/uikit-icons.min.js" async="false"></script>
+    <script data-presets="es2015,stage-2">
+        const app = new Vue({
+            el: '#app',
+            data: {
+                questions: {
+                    '[spid_saule]':   { value: false, text: 'Spīd saule?' },
+                    '[bus_kd]':       { value: false, text: 'Būs KD?' },
+                    '[bija_ballite]': { value: false, text: 'Vakar bija ballīte?' },
+                    '[list_lietus]':  { value: false, text: 'Līst lietus?' },
+                    '[nav_md]':       { value: false, text: 'Suns apēda mājas darbu?' },
+                },
+                result: false,
+                answer: '',
+                kb:
+                    'IF [spid_saule] AND [bija_ballite] THEN [neiet]\n' +
+                    'IF [spid_saule] AND NOT [bija_ballite] AND [bus_kd] THEN [iet]\n' +
+                    'IF [spid_saule] AND NOT [bija_ballite] AND NOT [bus_kd]  AND NOT [nav_md] THEN [iet]\n' +
+                    'IF [spid_saule] AND NOT [bija_ballite] AND NOT [bus_kd]  AND [nav_md] THEN [neiet]\n' +
+                    'IF NOT [spid_saule] AND [list_lietus] THEN [neiet]\n' +
+                    'IF NOT [spid_saule] AND NOT [list_lietus] AND [nav_md] THEN [neiet]\n' +
+                    'IF NOT [spid_saule] AND NOT [list_lietus] AND NOT [nav_md] THEN [iet]\n'
+            },
+            methods: {
+                analyze: function() {
+                    this.direct()
+                    this.result = true
+                },
+                // tiešā spriedumu ķēdīte
+                direct: function() {
+                    let statements = this.kb.split('\n')
+                    for (i in statements) {
+                        let result = this.checkStatement(statements[i])
+                        console.log(result)
+                        if(result.result){
+                            this.answer = result.answer
+                            break
+                        }
+                    }
+                },
+                // apgrieztā spriedumu ķēdīte
+                inverse: function() {
+
+                },
+                // varbūtību
+                probability: function(){
+
+                },
+                checkStatement: function(statement){
+                    let answer = statement.substr(statement.indexOf('THEN') + 4).trim()
+                    let conditions = statement.slice(0, statement.indexOf('THEN')).
+                            replace('IF', '').
+                            replace(/AND/g, '&&').
+                            replace(/OR/g, '||').
+                            replace(/NOT/g, '!').
+                            trim()
+                    let self = this
+                    conditions = conditions.replace(/\[.*?\]/gi, function (key) {
+                        return self.questions[key] ? self.questions[key].value : false
+                    })
+                    return {
+                        result: eval(conditions),
+                        answer: answer
+                    }
+                }
+            },
+            computed: {
+                conditionList: function(){
+                    return Object.keys(this.questions).toString()
+                }
+            },
+            mounted: function() {
+                if(localStorage.getItem('kb'))
+                    this.kb = localStorage.getItem('kb')
+                else
+                    localStorage.setItem('kb', this.kb)
+            },
+            watch: {
+                kb: function () {
+                    localStorage.setItem('kb', this.kb)
+                }
+            }
+        })
+    </script>
+</body>
+</html>
