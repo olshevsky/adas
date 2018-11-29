@@ -11,15 +11,15 @@
         <div class="uk-child-width-expand@s uk-text-center uk-padding" uk-grid>
             <div class="uk-width-1-3">
                 <div class="uk-card uk-card-default uk-card-body">
-                    <form class="uk-form-stacked uk-padding">
+                    <form class="uk-form-stacked">
                         <div>
                             <legend class="uk-legend">Jautājumi</legend>
                             <p class="uk-text-left">Izvēleties kritērijus un nospiediet pogu Analizēt.</p>
                         </div>
-                        <div class="uk-margin">
+                        <div class="uk-margin uk-text-left">
                             <div v-for="(question, key) in questions" :key="key" class="uk-margin uk-grid-small uk-child-width-auto uk-grid">
                                 <label>
-                                    <input v-model="question.value" class="uk-checkbox" type="checkbox">
+                                    <input v-model="question.checked" class="uk-checkbox" type="checkbox">
                                     <span>{{question.text}}</span>
                                     <span uk-icon="info" :uk-tooltip="key"></span>
                                 </label>
@@ -38,7 +38,7 @@
             </div>
             <div class="uk-width-2-3">
                 <div class="uk-card uk-card-default uk-card-body">
-                    <form class="uk-form-stacked uk-padding">
+                    <form class="uk-form-stacked">
                         <div>
                             <legend class="uk-legend">Zināšanu bāze</legend>
                             <p class="uk-text-left">Var rediģēt. Zināšanu bāze tiek saglabāta pārlukprogrammas localstorage.</p>
@@ -53,22 +53,27 @@
             </div>
             <div class="uk-width-1-3">
                 <div class="uk-card uk-card-default uk-card-body">
-                    <form class="uk-form-stacked uk-padding">
+                    <form class="uk-form-stacked">
                         <div>
-                            <legend class="uk-legend">Apmācīt</legend>
-                            <p class="uk-text-left">Izvēleties kritērijus un izvēlaties sagaidāmo rezultātu.</p>
+                            <legend class="uk-legend">Apmācība</legend>
+                            <p class="uk-text-left">Izvēlēties kritērijus un sagaidāmo rezultātu.</p>
                         </div>
                         <div class="uk-margin">
                             <div v-for="(question, key) in questions" :key="key" class="uk-margin uk-grid-small uk-child-width-auto uk-grid">
                                 <label>
-                                    <input v-model="question.value" class="uk-checkbox" type="checkbox">
-                                    <span>{{ question.text }} ({{ question.coef.toFixed(2) }})</span>
-                                    <span uk-icon="info" :uk-tooltip="key"></span>
+                                    <input v-model="question.learnChecked" class="uk-checkbox" type="checkbox">
+                                    <span>{{ question.text }} (koef. {{ question.coef.toFixed(2) }})</span>
                                 </label>
                             </div>
                         </div>
+                        <div class="uk-margin uk-text-left">
+                            <label class="uk-form-label" for="form-stacked-text">Pārliecības koef. robeža</label>
+                            <div class="uk-form-controls">
+                                <input v-model.number="limit" type="number" step="0.01" min="0" max="1" class="uk-input uk-form-width-small" placeholder="Limits">
+                            </div>
+                        </div>
                         <div class="uk-margin-large-top">
-                            <button v-for="(answer, key) in answers" @click.prevent="learn(key)" class="uk-button uk-button-primary uk-margin-right">{{ answer.text }} {{ answer.coef }}</button>
+                            <button v-for="(answer, key) in answers" @click.prevent="learn(key)" :class="answer.class">{{ answer.text }} {{ answer.coef.toFixed(2) }}</button>
                         </div>
                     </form>
                 </div>
@@ -85,75 +90,97 @@
             el: '#app',
             data: {
                 questions: {
-                    '[spid_saule]':   { value: false, coef: 0.01, text: 'Spīd saule?' },
-                    '[bus_kd]':       { value: false, coef: 0.01, text: 'Būs KD?' },
-                    '[bija_ballite]': { value: false, coef: 0.01, text: 'Vakar bija ballīte?' },
-                    '[list_lietus]':  { value: false, coef: 0.01, text: 'Līst lietus?' },
-                    '[nav_md]':       { value: false, coef: 0.01, text: 'Suns apēda mājas darbu?' },
+                    '[spid_saule]':   { checked: false, learnChecked: false, coef: 0.01, text: 'Spīd saule?' },
+                    '[bus_kd]':       { checked: false, learnChecked: false, coef: 0.01, text: 'Būs KD?' },
+                    '[bija_ballite]': { checked: false, learnChecked: false, coef: 0.01, text: 'Vakar bija ballīte?' },
+                    '[list_lietus]':  { checked: false, learnChecked: false, coef: 0.01, text: 'Līst lietus?' },
+                    '[nav_md]':       { checked: false, learnChecked: false, coef: 0.01, text: 'Suns apēda mājas darbu?' },
                 },
                 answers: {
-                    '[iet]':   { coef: 0.01, text:'Ir jaiet :(' },
-                    '[neiet]': { coef: 0.01, text:'Nav jāiet :)' },
+                    '[iet]':   { coef: 0.5, text: 'Ir jaiet', class: 'uk-button uk-margin-right uk-button-primary' },
+                    '[neiet]': { coef: 0.5, text: 'Nav jāiet', class: 'uk-button uk-margin-right uk-button-danger'},
                 },
-                limit: 0.8,
-                step: 0.01,
+                limit: 0.6,
                 result: false,
                 answer: '[neiet]',
                 kb: ''
             },
             methods: {
                 analyze: function() {
-                    this.direct()
+                    this.answer = '[neiet]'
+                    this.probability()
                     this.result = true
                 },
-                // tiešā spriedumu ķēdīte
-                direct: function() {
-                    let statements = this.kb.split('\n')
+                probability: function(){
+                    let statements = this.getCheckedStatements()
                     for (i in statements) {
-                        let result = this.checkStatement(statements[i])
-                        console.log(result)
-                        if(result.result){
-                            this.answer = result.answer
-                            break
+                        if(statements[i] !== ''){
+                            let result = this.calculateStatement(statements[i])
+                            if(result.result){
+                                this.answer = result.answer
+                                break
+                            }
                         }
                     }
                 },
-                // apgrieztā spriedumu ķēdīte
-                inverse: function() {
-
-                },
-                // varbūtību
-                probability: function(){
-                    
+                getCheckedStatements: function(){
+                    let conditionsString = ''
+                    for(key in this.questions){
+                        if(this.questions[key].checked){
+                            conditionsString += (conditionsString.length === 0) ?  key : ' AND '+ key
+                        }
+                    }
+                    return this.kb.split('\n').filter(function(statement){
+                        let conditions = statement.slice(0, statement.indexOf('THEN')).replace('IF', '').trim()
+                        if(conditions === conditionsString)
+                            return statement
+                    })
                 },
                 learn: function (answer) {
-                    let questionString = ''
+                    let conditionsString = ''
                     for(key in this.questions){
-                        if(this.questions[key].value){
-                            this.questions[key].coef = (this.questions[key].coef + this.step > 1) ? 1 : this.questions[key].coef + this.step
-                            questionString += (questionString.length === 0) ?  key : ' AND '+ key
+                        if(this.questions[key].learnChecked){
+                            conditionsString += (conditionsString.length === 0) ?  key : ' AND '+ key
                         }
                     }
-                    this.answers[answer].coef = (this.answers[answer].coef + this.step > 1) ? 1 : this.answers[answer].coef + this.step
-                    let statement = 'IF ' + questionString + ' THEN ' + answer + '\n';
+                    let statement = 'IF ' + conditionsString + ' THEN ' + answer + '\n';
+                    this.update(statement)
                     if(this.kb.indexOf(statement) === -1)
                         this.kb += statement
                 },
-                checkStatement: function(statement){
-                    console.log(statement)
+                update: function(statement){
+                    let keys = statement.slice(0, statement.indexOf('THEN')).match(/\[.*?\]/gi)
+                    let self = this
+                    let prev = 0.01
+                    keys.forEach(function(key){
+                        // Pk = Pkold + (1 - Pkold) * Pjaun
+                        self.questions[key].coef = self.questions[key].coef + (1 - self.questions[key].coef) * prev
+                        prev = self.questions[key].coef
+                    })
+                    let answer = statement.substr(statement.indexOf('THEN') + 4).trim()
+                    this.answers[answer].coef = this.answers[answer].coef + (1 - this.answers[answer].coef) * prev
+
+                },
+                calculateStatement: function (statement) {
+                    let self = this
                     let answer = statement.substr(statement.indexOf('THEN') + 4).trim()
                     let conditions = statement.slice(0, statement.indexOf('THEN')).
                             replace('IF', '').
-                            replace(/AND/g, '&&').
-                            replace(/OR/g, '||').
-                            replace(/NOT/g, '!').
-                            trim()
-                    let self = this
-                    conditions = conditions.replace(/\[.*?\]/gi, function (key) {
-                        return self.questions[key] ? self.questions[key].value : false
-                    })
+                            replace(/AND/g, '').
+                            replace(/OR/g, '').
+                            trim().
+                            match(/\[.*?\]/gi)
+                    let min = conditions.reduce(function(accumulator, current){
+                        return (self.questions[current].coef < accumulator) ? self.questions[current].coef : accumulator
+                    }, 1)
+                    let probability = min * this.answers[answer].coef
+                    console.log(statement)
+                    console.log('min AND coef: ' + min)
+                    console.log('answer coef: ' + this.answers[answer].coef)
+                    console.log('statement probability: ' + probability)
+                    console.log('------------------------------')
                     return {
-                        result: eval(conditions),
+                        result: (probability > this.limit) ? true : false,
                         answer: answer
                     }
                 }
