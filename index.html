@@ -9,7 +9,7 @@
 <body>
     <div id="app">
         <div class="uk-child-width-expand@s uk-text-center uk-padding" uk-grid>
-            <div class="uk-width-1-3">
+            <div class="uk-width-1-2">
                 <div class="uk-card uk-card-default uk-card-body">
                     <form class="uk-form-stacked">
                         <div>
@@ -36,22 +36,7 @@
                     </form>
                 </div>
             </div>
-            <div class="uk-width-2-3">
-                <div class="uk-card uk-card-default uk-card-body">
-                    <form class="uk-form-stacked">
-                        <div>
-                            <legend class="uk-legend">Zināšanu bāze</legend>
-                            <p class="uk-text-left">Var rediģēt. Zināšanu bāze tiek saglabāta pārlukprogrammas localstorage.</p>
-                            <p class="uk-text-left">Pieejamie nosacijumi: <strong>{{ conditionList }}</strong></p>
-                            <p class="uk-text-left">Iespējamās atbildes: <strong>[iet],[neiet]</strong></p>
-                        </div>
-                        <div class="uk-margin">
-                            <textarea v-model="kb" class="uk-textarea" rows="9" placeholder="Zināšanu bāze"></textarea>
-                        </div>
-                    </form>
-                </div>
-            </div>
-            <div class="uk-width-1-3">
+            <div class="uk-width-1-2">
                 <div class="uk-card uk-card-default uk-card-body">
                     <form class="uk-form-stacked">
                         <div>
@@ -78,14 +63,29 @@
                     </form>
                 </div>
             </div>
+            <div class="uk-width-3-3">
+                <div class="uk-card uk-card-default uk-card-body">
+                    <form class="uk-form-stacked">
+                        <div>
+                            <legend class="uk-legend">Zināšanu bāze</legend>
+                            <p class="uk-text-left">Var rediģēt. Zināšanu bāze tiek saglabāta pārlukprogrammas localstorage.</p>
+                            <p class="uk-text-left">Pieejamie nosacijumi: <strong>{{ conditionList }}</strong></p>
+                            <p class="uk-text-left">Iespējamās atbildes: <strong>[iet],[neiet]</strong></p>
+                        </div>
+                        <div class="uk-margin">
+                            <textarea v-model="kb" class="uk-textarea" rows="9" placeholder="Zināšanu bāze"></textarea>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
-    <script src="./vendor/js/babel.min.js"></script>
+    <script src="./vendor/js/babel-6.26.0.min.js"></script>
     <script src="./vendor/js/vue.min.js"></script>
     <script src="./vendor/js/uikit.min.js"></script>
     <!--async="false" uikit and vuejs conflict fix-->
     <script src="./vendor/js/uikit-icons.min.js" async="false"></script>
-    <script data-presets="es2015,stage-2">
+    <script type="text/babel" data-presets="es2015,stage-2">
         const app = new Vue({
             el: '#app',
             data: {
@@ -98,7 +98,7 @@
                 },
                 answers: {
                     '[iet]':   { coef: 0.5, text: 'Ir jaiet', class: 'uk-button uk-margin-right uk-margin-bottom uk-button-primary' },
-                    '[neiet]': { coef: 0.5, text: 'Nav jāiet', class: 'uk-button uk-margin-right uk-margin-bottom uk-button-danger'},
+                    '[neiet]': { coef: 0.5, text: 'Nav jāiet', class: 'uk-button uk-margin-right uk-margin-bottom uk-button-danger' },
                 },
                 limit: 0.6,
                 result: false,
