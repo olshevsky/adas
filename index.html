@@ -58,7 +58,7 @@
                             <legend class="uk-legend">Apmācība</legend>
                             <p class="uk-text-left">Izvēlēties kritērijus un sagaidāmo rezultātu.</p>
                         </div>
-                        <div class="uk-margin">
+                        <div class="uk-margin uk-text-left">
                             <div v-for="(question, key) in questions" :key="key" class="uk-margin uk-grid-small uk-child-width-auto uk-grid">
                                 <label>
                                     <input v-model="question.learnChecked" class="uk-checkbox" type="checkbox">
@@ -73,7 +73,7 @@
                             </div>
                         </div>
                         <div class="uk-margin-large-top">
-                            <button v-for="(answer, key) in answers" @click.prevent="learn(key)" :class="answer.class">{{ answer.text }} {{ answer.coef.toFixed(2) }}</button>
+                            <button v-for="(answer, key) in answers" @click.prevent="learn(key)" :class="answer.class">{{ answer.text }} ({{ answer.coef.toFixed(2) }})</button>
                         </div>
                     </form>
                 </div>
@@ -97,8 +97,8 @@
                     '[nav_md]':       { checked: false, learnChecked: false, coef: 0.01, text: 'Suns apēda mājas darbu?' },
                 },
                 answers: {
-                    '[iet]':   { coef: 0.5, text: 'Ir jaiet', class: 'uk-button uk-margin-right uk-button-primary' },
-                    '[neiet]': { coef: 0.5, text: 'Nav jāiet', class: 'uk-button uk-margin-right uk-button-danger'},
+                    '[iet]':   { coef: 0.5, text: 'Ir jaiet', class: 'uk-button uk-margin-right uk-margin-bottom uk-button-primary' },
+                    '[neiet]': { coef: 0.5, text: 'Nav jāiet', class: 'uk-button uk-margin-right uk-margin-bottom uk-button-danger'},
                 },
                 limit: 0.6,
                 result: false,
@@ -150,16 +150,17 @@
                 },
                 update: function(statement){
                     let keys = statement.slice(0, statement.indexOf('THEN')).match(/\[.*?\]/gi)
-                    let self = this
-                    let prev = 0.01
-                    keys.forEach(function(key){
-                        // Pk = Pkold + (1 - Pkold) * Pjaun
-                        self.questions[key].coef = self.questions[key].coef + (1 - self.questions[key].coef) * prev
-                        prev = self.questions[key].coef
-                    })
-                    let answer = statement.substr(statement.indexOf('THEN') + 4).trim()
-                    this.answers[answer].coef = this.answers[answer].coef + (1 - this.answers[answer].coef) * prev
-
+                    if(keys.length > 0){
+                        let self = this
+                        let prev = 0.01
+                        keys.forEach(function(key){
+                            // Pk = Pkold + (1 - Pkold) * Pjaun
+                            self.questions[key].coef = self.questions[key].coef + (1 - self.questions[key].coef) * prev
+                            prev = self.questions[key].coef
+                        })
+                        let answer = statement.substr(statement.indexOf('THEN') + 4).trim()
+                        this.answers[answer].coef = this.answers[answer].coef + (1 - this.answers[answer].coef) * prev
+                    }
                 },
                 calculateStatement: function (statement) {
                     let self = this
