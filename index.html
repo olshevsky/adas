@@ -40,6 +40,21 @@
                 <div class="uk-card uk-card-default uk-card-body">
                     <form class="uk-form-stacked">
                         <div>
+                            <legend class="uk-legend">Zināšanu bāze</legend>
+                            <p class="uk-text-left">Var rediģēt. Zināšanu bāze tiek saglabāta pārlukprogrammas localstorage.</p>
+                            <p class="uk-text-left">Pieejamie nosacijumi: <strong>{{ conditionList }}</strong></p>
+                            <p class="uk-text-left">Iespējamās atbildes: <strong>[iet],[neiet]</strong></p>
+                        </div>
+                        <div class="uk-margin">
+                            <textarea v-model="kb" class="uk-textarea" rows="9" placeholder="Zināšanu bāze"></textarea>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="uk-width-1-3">
+                <div class="uk-card uk-card-default uk-card-body">
+                    <form class="uk-form-stacked">
+                        <div>
                             <legend class="uk-legend">Apmācība</legend>
                             <p class="uk-text-left">Izvēlēties kritērijus un sagaidāmo rezultātu.</p>
                         </div>
@@ -59,21 +74,6 @@
                         </div>
                         <div class="uk-margin-large-top">
                             <button v-for="(answer, key) in answers" @click.prevent="learn(key)" :class="answer.class">{{ answer.text }} ({{ answer.coef.toFixed(2) }})</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-            <div class="uk-width-3-3">
-                <div class="uk-card uk-card-default uk-card-body">
-                    <form class="uk-form-stacked">
-                        <div>
-                            <legend class="uk-legend">Zināšanu bāze</legend>
-                            <p class="uk-text-left">Var rediģēt. Zināšanu bāze tiek saglabāta pārlukprogrammas localstorage.</p>
-                            <p class="uk-text-left">Pieejamie nosacijumi: <strong>{{ conditionList }}</strong></p>
-                            <p class="uk-text-left">Iespējamās atbildes: <strong>[iet],[neiet]</strong></p>
-                        </div>
-                        <div class="uk-margin">
-                            <textarea v-model="kb" class="uk-textarea" rows="9" placeholder="Zināšanu bāze"></textarea>
                         </div>
                     </form>
                 </div>
@@ -100,7 +100,7 @@
                     '[iet]':   { coef: 0.5, text: 'Ir jaiet', class: 'uk-button uk-margin-right uk-margin-bottom uk-button-primary' },
                     '[neiet]': { coef: 0.5, text: 'Nav jāiet', class: 'uk-button uk-margin-right uk-margin-bottom uk-button-danger' },
                 },
-                limit: 0.6,
+                limit: 0.3,
                 result: false,
                 answer: '[neiet]',
                 kb: ''
@@ -108,37 +108,29 @@
             methods: {
                 analyze: function() {
                     this.answer = '[neiet]'
-                    this.probability()
+                    this.probabilityDynamic()
                     this.result = true
                 },
-                probability: function(){
-                    let statements = this.getCheckedStatements()
-                    for (i in statements) {
-                        if(statements[i] !== ''){
-                            let result = this.calculateStatement(statements[i])
-                            if(result.result){
-                                this.answer = result.answer
-                                break
-                            }
-                        }
-                    }
-                },
-                getCheckedStatements: function(){
+                probabilityDynamic: function(){
                     let conditionsString = ''
-                    for(key in this.questions){
+                    for(const key in this.questions){
                         if(this.questions[key].checked){
                             conditionsString += (conditionsString.length === 0) ?  key : ' AND '+ key
                         }
                     }
-                    return this.kb.split('\n').filter(function(statement){
-                        let conditions = statement.slice(0, statement.indexOf('THEN')).replace('IF', '').trim()
-                        if(conditions === conditionsString)
-                            return statement
-                    })
+
+                    if(conditionsString.length > 0){
+                        let go = this.calculateStatement('IF ' + conditionsString + ' THEN [iet]')
+                        let goNot = this.calculateStatement('IF ' + conditionsString + ' THEN [neiet]')
+                        if(go.probability > goNot.probability)
+                            this.answer = '[iet]'
+                        else
+                            this.answer = '[neiet]'
+                    }
                 },
                 learn: function (answer) {
                     let conditionsString = ''
-                    for(key in this.questions){
+                    for(const key in this.questions){
                         if(this.questions[key].learnChecked){
                             conditionsString += (conditionsString.length === 0) ?  key : ' AND '+ key
                         }
@@ -150,7 +142,7 @@
                 },
                 update: function(statement){
                     let keys = statement.slice(0, statement.indexOf('THEN')).match(/\[.*?\]/gi)
-                    if(keys.length > 0){
+                    if(keys && keys.length > 0){
                         let self = this
                         let prev = 0.01
                         keys.forEach(function(key){
@@ -182,6 +174,7 @@
                     console.log('------------------------------')
                     return {
                         result: (probability > this.limit) ? true : false,
+                        probability: probability,
                         answer: answer
                     }
                 }
