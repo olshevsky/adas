@@ -25,50 +25,19 @@
                             </label>
                         </div>
                     </div>
-                    <div class="uk-margin-top">
-
-                        <div class="uk-margin uk-text-left">
-                            <div class="uk-form-label">Analizēt pēc:</div>
-                            <div class="uk-form-controls">
-                                <label>
-                                    <input class="uk-radio" name="type" type="radio" value="direct" v-model="type"> Tiešās spriedumu ķēdītes
-                                </label><br>
-                                <label>
-                                    <input class="uk-radio" name="type" type="radio" value="probability" v-model="type"> Varbūtības (Izmantojot lēmumu koku un koef. robežvērtību)
-                                </label><br>
-                                <label>
-                                    <input class="uk-radio" name="type" type="radio" value="probabilityDynamic" v-model="type"> Varbūtības dinamiski (Ja nav apgalvojuma, ģenerēt)
-                                </label>
-                            </div>
-                        </div>
-                    </div>
                     <div class="uk-margin-large-top">
                         <button @click.prevent="analyze" class="uk-button uk-button-primary">Analizēt</button>
                     </div>
                     <div class="uk-margin">
                         <div v-if="result" class="uk-text-left">
-                            <strong>Rezultāts: {{ answer }}</strong>
+                            <strong v-if="answer">Rezultāts: {{ answer }}</strong>
+                            <strong v-else>Nav pārvarēta pārliecības koef. robeža</strong>
                         </div>
                     </div>
                 </form>
             </div>
         </div>
         <div class="uk-width-1-2">
-            <div class="uk-card uk-card-default uk-card-body">
-                <form class="uk-form-stacked">
-                    <div>
-                        <legend class="uk-legend">Zināšanu bāze</legend>
-                        <p class="uk-text-left">Var rediģēt. Zināšanu bāze tiek saglabāta pārlukprogrammas localstorage.</p>
-                        <p class="uk-text-left">Pieejamie nosacijumi: <strong>{{ conditionList }}</strong></p>
-                        <p class="uk-text-left">Iespējamās atbildes: <strong>[iet],[neiet]</strong></p>
-                    </div>
-                    <div class="uk-margin">
-                        <textarea v-model="kb" class="uk-textarea" rows="9" placeholder="Zināšanu bāze"></textarea>
-                    </div>
-                </form>
-            </div>
-        </div>
-        <div class="uk-width-1-3">
             <div class="uk-card uk-card-default uk-card-body">
                 <form class="uk-form-stacked">
                     <div>
@@ -89,20 +58,24 @@
                             <input v-model.number="limit" type="number" step="0.01" min="0" max="1" class="uk-input uk-form-width-small" placeholder="Limits">
                         </div>
                     </div>
+                    <div class="uk-margin uk-text-left">
+                        <button @click.prevent="save" class="uk-button uk-margin-right uk-margin-bottom">Saglabāt koef.</button>
+                    </div>
                     <div class="uk-margin-large-top">
-                        <button v-for="(answer, key) in answers" @click.prevent="learn(key)" :class="answer.class">{{ answer.text }} ({{ answer.coef.toFixed(2) }})</button>
+                        <button v-for="(answer, key) in answers" @click.prevent="learn(key)" :class="'uk-button uk-margin-right uk-margin-bottom ' + answer.class">{{ answer.text }} ({{ answer.coef.toFixed(2) }})</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 </div>
-<script src="./vendor/js/babel-6.26.0.min.js"></script>
-<script src="./vendor/js/vue.min.js"></script>
+<!--<script src="./vendor/js/babel-6.26.0.min.js"></script>-->
+<script src="./vendor/js/vue.js"></script>
 <script src="./vendor/js/uikit.min.js"></script>
 <!--async="false" uikit and vuejs conflict fix-->
 <script src="./vendor/js/uikit-icons.min.js" async="false"></script>
-<script type="text/babel" data-presets="es2015,stage-2">
+<!--<script type="text/babel" data-presets="es2015,stage-2">-->
+<script>
     const app = new Vue({
         el: '#app',
         data: {
@@ -114,46 +87,17 @@
                 '[nav_md]':       { checked: false, learnChecked: false, coef: 0.01, text: 'Suns apēda mājas darbu?' },
             },
             answers: {
-                '[iet]':   { coef: 0.5, text: 'Ir jaiet', class: 'uk-button uk-margin-right uk-margin-bottom uk-button-primary' },
-                '[neiet]': { coef: 0.5, text: 'Nav jāiet', class: 'uk-button uk-margin-right uk-margin-bottom uk-button-danger' },
+                '[iet]':   { coef: 0.01, text: 'Ir jaiet',  class: 'uk-button-primary' },
+                '[neiet]': { coef: 0.01, text: 'Nav jāiet', class: 'uk-button-danger' },
             },
             limit: 0.3,
             result: false,
-            answer: '[neiet]',
-            kb: '',
-            type: 'probabilityDynamic'
+            answer: 13
         },
         methods: {
-            analyze: function(){
-                this.answer = '[neiet]'
+            analyze: function () {
+                this.answer = null
                 this.result = false
-                switch(this.type) {
-                    case 'direct':
-                        this.direct()
-                        break
-                    case 'probability':
-                        this.probability()
-                        break
-                    case 'probabilityDynamic':
-                        this.probabilityDynamic()
-                        break
-                }
-                this.result = true
-            },
-            probability: function(){
-                let statements = this.getCheckedStatements()
-                for (const i in statements) {
-                    if(statements[i] !== ''){
-                        let result = this.calculateStatement(statements[i])
-                        if(result.result){
-                            this.answer = result.answer
-                            this.result = true
-                            break
-                        }
-                    }
-                }
-            },
-            probabilityDynamic: function(){
                 let conditionsString = ''
                 for(const key in this.questions){
                     if(this.questions[key].checked){
@@ -161,91 +105,33 @@
                     }
                 }
                 if(conditionsString.length > 0){
-                    let go = this.calculateStatement('IF ' + conditionsString + ' THEN [iet]')
-                    let goNot = this.calculateStatement('IF ' + conditionsString + ' THEN [neiet]')
-                    if(go.probability > goNot.probability)
-                        this.answer = '[iet]'
+                    let goStatement = 'IF ' + conditionsString + ' THEN [iet]'
+                    let goNotStatement = 'IF ' + conditionsString + ' THEN [neiet]'
+                    let go = this.calculateStatement(goStatement)
+                    let goNot = this.calculateStatement(goNotStatement)
+                    console.log(go)
+                    console.log(goNot)
+//                    if(go.probability > this.limit && go.probability > goNot.probability){
+//                        this.answer = '[iet]'
+//                        this.update(goStatement)
+//                    }
+//                    else if(goNot.probability < this.limit){
+//                        this.answer = '[neiet]'
+//                        this.update(goNotStatement)
+//                    }
                 }
-            },
-            direct: function() {
-                let statements = this.kb.split('\n')
-                for (const i in statements) {
-                    if(statements[i] !== ''){
-                        let result = this.checkStatement(statements[i])
-                        if(result.result){
-                            this.answer = result.answer
-                            break
-                        }
-                    }
-                }
-            },
-            learn: function (answer) {
-                let conditionsString = ''
-                for(const key in this.questions){
-                    if(this.questions[key].learnChecked){
-                        conditionsString += (conditionsString.length === 0) ?  key : ' AND '+ key
-                    }
-                }
-                let statement = 'IF ' + conditionsString + ' THEN ' + answer + '\n';
-                this.update(statement)
-                if(this.kb.indexOf(statement) === -1)
-                    this.kb += statement
-            },
-            update: function(statement){
-                let keys = statement.slice(0, statement.indexOf('THEN')).match(/\[.*?\]/gi)
-                if(keys && keys.length > 0){
-                    let self = this
-                    let prev = 0.01
-                    keys.forEach(function(key){
-                        // Pk = Pkold + (1 - Pkold) * Pjaun
-                        self.questions[key].coef = self.questions[key].coef + (1 - self.questions[key].coef) * prev
-                        prev = self.questions[key].coef
-                    })
-                    let answer = statement.substr(statement.indexOf('THEN') + 4).trim()
-                    this.answers[answer].coef = this.answers[answer].coef + (1 - this.answers[answer].coef) * prev
-                }
-            },
-            checkStatement: function(statement){
-                let answer = statement.substr(statement.indexOf('THEN') + 4).trim()
-                let conditions = statement.slice(0, statement.indexOf('THEN')).
-                replace('IF', '').
-                replace(/AND/g, '&&').
-                replace(/OR/g, '||').
-                replace(/NOT/g, '!').
-                trim()
-                let self = this
-                conditions = conditions.replace(/\[.*?\]/gi, function (key) {
-                    return self.questions[key] ? self.questions[key].checked : false
-                })
-                return {
-                    result: eval(conditions),
-                    answer: answer
-                }
-            },
-            getCheckedStatements: function(){
-                let conditionsString = ''
-                for(const key in this.questions){
-                    if(this.questions[key].checked){
-                        conditionsString += (conditionsString.length === 0) ?  key : ' AND '+ key
-                    }
-                }
-                return this.kb.split('\n').filter(function(statement){
-                    let conditions = statement.slice(0, statement.indexOf('THEN')).replace('IF', '').trim()
-                    if(conditions === conditionsString)
-                        return statement
-                })
+                this.result = true
             },
             calculateStatement: function (statement) {
-                let self = this
                 let answer = statement.substr(statement.indexOf('THEN') + 4).trim()
                 let conditions = statement.slice(0, statement.indexOf('THEN')).
-                replace('IF', '').
-                replace(/AND/g, '').
-                replace(/OR/g, '').
-                trim().
-                match(/\[.*?\]/gi)
-                let min = conditions.reduce(function(accumulator, current){
-                    return (self.questions[current].coef < accumulator) ? self.questions[current].coef : accumulator
+                    replace('IF', '').
+                    replace(/AND/g, '').
+                    replace(/OR/g, '').
+                    trim().
+                    match(/\[.*?\]/gi)
+                let min = conditions.reduce((accumulator, current) => {
+                    return (this.questions[current].coef < accumulator) ? this.questions[current].coef : accumulator
                 }, 1)
                 let probability = min * this.answers[answer].coef
                 console.log(statement)
@@ -258,22 +144,41 @@
                     probability: probability,
                     answer: answer
                 }
-            }
-        },
-        computed: {
-            conditionList: function(){
-                return Object.keys(this.questions).toString()
+            },
+            update: function(statement){
+                let keys = statement.slice(0, statement.indexOf('THEN')).match(/\[.*?\]/gi)
+                if(keys && keys.length > 0){
+                    let prev = 0.01
+                    keys.forEach((key) => {
+                        // Pk = Pkold + (1 - Pkold) * Pjaun
+                        this.questions[key].coef = this.questions[key].coef + (1 - this.questions[key].coef) * prev
+                        prev = this.questions[key].coef
+                    })
+                    let answer = statement.substr(statement.indexOf('THEN') + 4).trim()
+                    this.answers[answer].coef = this.answers[answer].coef + (1 - this.answers[answer].coef) * prev
+                }
+            },
+            learn: function (answer) {
+                let conditionsString = ''
+                for(const key in this.questions){
+                    if(this.questions[key].learnChecked){
+                        conditionsString += (conditionsString.length === 0) ?  key : ' AND '+ key
+                    }
+                }
+                let statement = 'IF ' + conditionsString + ' THEN ' + answer + '\n';
+                this.update(statement)
+            },
+            save: function () {
+                localStorage.setItem('questions', JSON.stringify(this.questions))
+                localStorage.setItem('answers', JSON.stringify(this.answers))
+                localStorage.setItem('limit', this.limit)
             }
         },
         mounted: function() {
-            if(localStorage.getItem('kb'))
-                this.kb = localStorage.getItem('kb')
-            else
-                localStorage.setItem('kb', this.kb)
-        },
-        watch: {
-            kb: function () {
-                localStorage.setItem('kb', this.kb)
+            if(localStorage.getItem('questions') && localStorage.getItem('answers') && localStorage.getItem('limit')){
+                this.questions = JSON.parse(localStorage.getItem('questions'))
+                this.answers = JSON.parse(localStorage.getItem('answers'))
+                this.limit = parseFloat(localStorage.getItem('limit'))
             }
         }
     })
