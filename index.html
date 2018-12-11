@@ -59,7 +59,7 @@
                         </div>
                     </div>
                     <div class="uk-margin uk-text-left">
-                        <button @click.prevent="save" class="uk-button uk-margin-right uk-margin-bottom">Saglabāt koef.</button>
+                        <button @click.prevent="save" class="uk-button uk-button-default uk-margin-right uk-margin-bottom">Saglabāt koef.</button>
                     </div>
                     <div class="uk-margin-large-top">
                         <button v-for="(answer, key) in answers" @click.prevent="learn(key)" :class="'uk-button uk-margin-right uk-margin-bottom ' + answer.class">{{ answer.text }} ({{ answer.coef.toFixed(2) }})</button>
@@ -92,7 +92,7 @@
             },
             limit: 0.3,
             result: false,
-            answer: 13
+            answer: null
         },
         methods: {
             analyze: function () {
@@ -109,16 +109,14 @@
                     let goNotStatement = 'IF ' + conditionsString + ' THEN [neiet]'
                     let go = this.calculateStatement(goStatement)
                     let goNot = this.calculateStatement(goNotStatement)
-                    console.log(go)
-                    console.log(goNot)
-//                    if(go.probability > this.limit && go.probability > goNot.probability){
-//                        this.answer = '[iet]'
-//                        this.update(goStatement)
-//                    }
-//                    else if(goNot.probability < this.limit){
-//                        this.answer = '[neiet]'
-//                        this.update(goNotStatement)
-//                    }
+                    if(go.probability > this.limit && go.probability >= goNot.probability){
+                        this.answer = '[iet]'
+                        this.update(goStatement)
+                    }
+                    else if(goNot.probability > this.limit){
+                        this.answer = '[neiet]'
+                        this.update(goNotStatement)
+                    }
                 }
                 this.result = true
             },
